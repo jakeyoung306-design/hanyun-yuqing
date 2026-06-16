@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>徐工汉云 · 全媒体舆情监控</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
+<style>
+:root{color-scheme:light}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;background:#f0f2f7;color:#1a1a2e;font-size:13px;line-height:1.5;min-height:100vh}
+.hd{background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 55%,#1565c0 100%);color:#fff;padding:13px 18px 11px;display:flex;align-items:center;justify-content:space-between;gap:10px;box-shadow:0 2px 10px rgba(0,0,0,.2);position:sticky;top:0;z-index:100}
+.hd-left h1{font-size:17px;font-weight:700;letter-spacing:.4px}
+.hd-left p{font-size:11px;opacity:.7;margin-top:1px}
+.hd-right{display:flex;align-items:center;gap:7px;flex-shrink:0}
+.hd-date{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);border-radius:6px;padding:3px 10px;font-size:12px}
+.btn-hd{color:#fff;border-radius:6px;padding:4px 12px;font-size:12px;cursor:pointer;font-family:inherit;border:1px solid rgba(255,255,255,.3);transition:background .15s}
+.btn-refresh{background:rgba(255,255,255,.2)}.btn-refresh:hover{background:rgba(255,255,255,.32)}
+.btn-manual{background:rgba(255,165,0,.35);border-color:rgba(255,165,0,.6)}.btn-manual:hover{background:rgba(255,165,0,.55)}
+.btn-report{background:rgba(99,102,241,.45);border-color:rgba(99,102,241,.7)}.btn-report:hover{background:rgba(99,102,241,.65)}
+.period-bar{background:#fff;border-bottom:1px solid #e2e8f0;padding:0 18px;display:flex;align-items:center;position:sticky;top:56px;z-index:99;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.period-tab{padding:10px 20px;font-size:13px;font-weight:500;color:#6b7280;border:none;background:none;cursor:pointer;font-family:inherit;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .15s,border-color .15s}
+.period-tab.active{color:#1d4ed8;border-bottom-color:#1d4ed8}
+.period-sep{flex:1}
+.period-nav{display:flex;align-items:center;gap:6px;padding:4px 0}
+.nav-arrow{width:26px;height:26px;border:1px solid #d1d5db;border-radius:5px;background:#fff;cursor:pointer;font-size:14px;color:#374151;display:flex;align-items:center;justify-content:center}
+.nav-arrow:hover{background:#f1f5f9}
+.nav-label-btn{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:#374151;min-width:160px;padding:4px 10px;background:#f8faff;border:1px solid #bfdbfe;border-radius:6px;cursor:pointer;font-family:inherit;user-select:none}
+.nav-label-btn:hover{background:#eff6ff}
+.nav-label-btn .label-text{flex:1;text-align:center}
+.nav-label-btn .drop-arrow{font-size:10px;color:#6b7280}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;align-items:center;justify-content:center}
+.overlay.show{display:flex}
+.popup{background:#fff;border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.22);max-width:480px;width:92vw;overflow:hidden}
+.popup-hdr{display:flex;align-items:center;justify-content:space-between;padding:16px 20px 0}
+.popup-hdr h3{font-size:15px;font-weight:700;color:#1e3a5f}
+.popup-close{width:28px;height:28px;border:none;background:#f3f4f6;border-radius:50%;cursor:pointer;font-size:16px;color:#6b7280;display:flex;align-items:center;justify-content:center;line-height:1}
+.popup-close:hover{background:#e5e7eb}
+.popup-body{padding:16px 20px 20px}
+.btn-cancel{padding:7px 16px;border:1px solid #d1d5db;border-radius:7px;background:#fff;color:#374151;cursor:pointer;font-size:12px;font-family:inherit}
+.btn-cancel:hover{background:#f9fafb}
+.btn-submit{padding:7px 16px;background:#1d4ed8;border:none;border-radius:7px;color:#fff;cursor:pointer;font-size:12px;font-family:inherit}
+.btn-submit:hover{background:#1e40af}
+.btn-submit:disabled{opacity:.5;cursor:default}
+.mode-cards{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0}
+.mode-card{border:2px solid #e5e7eb;border-radius:10px;padding:20px 14px;text-align:center;cursor:pointer;transition:all .15s}
+.mode-card:hover{border-color:#1d4ed8;background:#f0f6ff;transform:translateY(-2px)}
+.mode-card .mc-icon{font-size:32px;margin-bottom:8px}
+.mode-card .mc-title{font-size:13px;font-weight:700;color:#1e3a5f;margin-bottom:4px}
+.mode-card .mc-desc{font-size:11px;color:#6b7280;line-height:1.5}
+#urlTextarea{width:100%;height:150px;border:1px solid #d1d5db;border-radius:8px;padding:10px;font-size:12px;font-family:inherit;resize:vertical;outline:none}
+#urlTextarea:focus{border-color:#1d4ed8;box-shadow:0 0 0 3px rgba(29,78,216,.1)}
+.status-center{padding:28px 24px;text-align:center}
+.s-icon{font-size:44px;margin-bottom:12px;line-height:1}
+.s-title{font-size:16px;font-weight:700;color:#1e3a5f;margin-bottom:8px}
+.s-body{font-size:12px;color:#6b7280;line-height:1.75;margin-bottom:16px}
+.diff-box{background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:12px 14px;margin-bottom:14px;text-align:left;font-size:12px;color:#15803d;line-height:1.8;display:none}
+.diff-box.stale{background:#fefce8;border-color:#fde047;color:#92400e}
+.s-actions{display:flex;gap:8px;justify-content:center}
+#calPickerOverlay{display:none;position:fixed;inset:0;z-index:1000}
+#calPickerOverlay.show{display:block}
+#calPickerPopup{position:absolute;background:#fff;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.18);padding:14px;width:300px;z-index:1001}
+.cp-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.cp-month-label{font-size:14px;font-weight:700;color:#1e3a5f}
+.cp-nav{width:28px;height:28px;border:1px solid #e5e7eb;border-radius:6px;background:#fff;cursor:pointer;font-size:14px;color:#374151;display:flex;align-items:center;justify-content:center}
+.cp-nav:hover{background:#f1f5f9}
+.cp-dow-row{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:4px}
+.cp-dow{text-align:center;font-size:10px;font-weight:600;color:#9ca3af;padding:3px 0}
+.cp-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.cp-cell{aspect-ratio:1;border-radius:7px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;padding:2px;border:1px solid transparent}
+.cp-cell:hover:not(.cp-empty):not(.cp-future){background:#eff6ff;border-color:#bfdbfe}
+.cp-cell.cp-empty,.cp-cell.cp-future{cursor:default}
+.cp-cell.cp-future{opacity:.4}
+.cp-cell.cp-today{border-color:#3b82f6!important;background:#eff6ff}
+.cp-cell.cp-selected{background:#1d4ed8!important;border-color:#1d4ed8!important}
+.cp-cell.cp-selected .cp-day-num{color:#fff!important}
+.cp-cell.cp-has-data{background:#f0fdf4;border-color:#86efac}
+.cp-cell.cp-has-neg{background:#fff5f5;border-color:#fca5a5}
+.cp-cell.cp-monthly{background:#fefce8;border-color:#fde047}
+.cp-cell.cp-monthly.cp-has-neg{background:#fff5f5;border-color:#fca5a5}
+.cp-day-num{font-size:11px;font-weight:600;color:#374151;line-height:1}
+.cp-cell.cp-today .cp-day-num{color:#1d4ed8}
+.cp-cell.cp-has-neg .cp-day-num{color:#b91c1c}
+.cp-cell.cp-monthly .cp-day-num{color:#92400e}
+.cp-dots{display:flex;gap:2px;margin-top:1px}
+.cp-dot{width:4px;height:4px;border-radius:50%}
+.cp-dot.pos{background:#16a34a}.cp-dot.neu{background:#9ca3af}.cp-dot.neg{background:#dc2626}
+.cp-count{font-size:9px;color:#6b7280;line-height:1}
+.cp-cell.cp-selected .cp-count{color:rgba(255,255,255,.8)}
+.cp-legend{display:flex;gap:8px;margin-top:10px;padding-top:8px;border-top:1px solid #f1f5f9;flex-wrap:wrap;justify-content:center}
+.cp-legend-item{display:flex;align-items:center;gap:3px;font-size:10px;color:#6b7280}
+.cp-legend-swatch{width:10px;height:10px;border-radius:2px;border:1px solid}
+.cp-legend-swatch.has-data{background:#f0fdf4;border-color:#86efac}
+.cp-legend-swatch.has-neg{background:#fff5f5;border-color:#fca5a5}
+.cp-legend-swatch.monthly{background:#fefce8;border-color:#fde047}
+#monthReportOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:600;align-items:center;justify-content:center}
+#monthReportOverlay.show{display:flex}
+.report-shell{background:#fff;width:min(820px,96vw);max-height:92vh;border-radius:14px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.3)}
+.report-toolbar{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid #e5e7eb;flex-shrink:0;background:#f8faff}
+.report-toolbar-title{font-size:14px;font-weight:700;color:#1e3a5f}
+.report-toolbar-actions{display:flex;gap:8px}
+#reportContent{overflow-y:auto;flex:1;padding:32px 40px}
+#toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(10px);background:#1a1a2e;color:#fff;padding:9px 20px;border-radius:20px;font-size:12px;z-index:9999;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;white-space:nowrap}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.page{padding:14px 16px;max-width:1100px;margin:0 auto}
+.neg-banner{display:none;background:#fff5f5;border:1px solid #feb2b2;border-left:4px solid #e53e3e;border-radius:8px;padding:10px 14px;margin-bottom:12px}
+.neg-banner.show{display:block}
+.neg-banner-title{font-weight:700;color:#c53030;font-size:12px;margin-bottom:6px}
+.neg-banner-list{list-style:none;display:flex;flex-direction:column;gap:4px}
+.neg-banner-list li{font-size:12px}
+.neg-banner-list a{color:#c53030;text-decoration:underline;word-break:break-all}
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:12px}
+.stat-c{background:#fff;border-radius:10px;padding:12px 14px;box-shadow:0 1px 4px rgba(0,0,0,.07)}
+.stat-lbl{font-size:11px;color:#9ca3af;margin-bottom:3px}
+.stat-val{font-size:24px;font-weight:700}
+.c-blue{color:#1d4ed8}.c-green{color:#16a34a}.c-gray{color:#6b7280}.c-red{color:#dc2626}.c-amber{color:#d97706}
+.stat-sub{font-size:10px;color:#d1d5db;margin-top:2px}
+.charts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.chart-c{background:#fff;border-radius:10px;padding:12px 14px;box-shadow:0 1px 4px rgba(0,0,0,.07)}
+.chart-ttl{font-size:12px;font-weight:600;color:#374151;margin-bottom:8px}
+.chart-wrap{position:relative;height:150px}
+.cal-wrap{background:#fff;border-radius:10px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.07);margin-bottom:12px}
+.cal-hdr{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:6px}
+.cal-dow{text-align:center;font-size:11px;font-weight:600;color:#6b7280;padding:3px 0}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cal-cell{min-height:56px;border-radius:8px;padding:5px 6px;border:1px solid #e5e7eb;background:#fafafa;cursor:pointer;transition:border-color .15s,background .15s;display:flex;flex-direction:column;gap:2px}
+.cal-cell:hover{border-color:#93c5fd;background:#eff6ff}
+.cal-cell.today{border-color:#3b82f6;background:#eff6ff}
+.cal-cell.selected{border-color:#1d4ed8;background:#dbeafe;box-shadow:0 0 0 2px rgba(29,78,216,.2)}
+.cal-cell.empty,.cal-cell.no-data{background:#f9fafb;cursor:default;opacity:.5}
+.cal-cell.monthly-data{background:#fefce8;border-color:#fde047}
+.cal-day-num{font-size:12px;font-weight:600;color:#374151}
+.cal-cell.today .cal-day-num{color:#1d4ed8}
+.cal-count{font-size:11px;font-weight:700;color:#1d4ed8}
+.cal-dots{display:flex;gap:2px;flex-wrap:wrap}
+.cal-dot{width:6px;height:6px;border-radius:50%}
+.cal-dot.pos{background:#16a34a}.cal-dot.neu{background:#9ca3af}.cal-dot.neg{background:#dc2626}
+.week-row{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;padding-bottom:2px}
+.week-cell{flex:1;min-width:90px;border-radius:8px;padding:8px 10px;border:1px solid #e5e7eb;background:#fafafa;cursor:pointer;transition:border-color .15s,background .15s;text-align:center}
+.week-cell:hover{border-color:#93c5fd;background:#eff6ff}
+.week-cell.today{border-color:#3b82f6;background:#eff6ff}
+.week-cell.selected{border-color:#1d4ed8;background:#dbeafe}
+.week-cell.no-data{opacity:.5;cursor:default}
+.wc-dow{font-size:11px;color:#6b7280;margin-bottom:2px}
+.wc-date{font-size:12px;font-weight:600;color:#374151;margin-bottom:4px}
+.wc-count{font-size:18px;font-weight:700;color:#1d4ed8}
+.wc-dots{display:flex;justify-content:center;gap:3px;margin-top:3px}
+.summary-c{background:#fff;border-radius:10px;padding:12px 14px;box-shadow:0 1px 4px rgba(0,0,0,.07);margin-bottom:12px}
+.summary-ttl{font-size:12px;font-weight:600;color:#374151;margin-bottom:7px}
+.summary-body{font-size:12px;color:#4b5563;line-height:1.75}
+.filters{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px;padding:8px 12px;background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.f-lbl{font-size:11px;color:#6b7280;white-space:nowrap}
+.f-group{display:flex;gap:4px;flex-wrap:wrap}
+.f-btn{padding:3px 10px;border:1px solid #d1d5db;border-radius:12px;background:#fff;font-size:11px;color:#374151;cursor:pointer;font-family:inherit}
+.f-btn:hover{border-color:#6366f1;color:#6366f1}
+.f-btn.on{background:#1d4ed8;border-color:#1d4ed8;color:#fff}
+.f-sep{width:1px;height:18px;background:#e5e7eb;flex-shrink:0}
+.list-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px}
+.list-ttl{font-size:12px;font-weight:600;color:#374151}
+.list-cnt{font-size:11px;color:#9ca3af}
+.items{display:flex;flex-direction:column;gap:7px}
+.item{background:#fff;border-radius:9px;padding:11px 13px;box-shadow:0 1px 3px rgba(0,0,0,.06);border-left:3px solid #e5e7eb}
+.item:hover{box-shadow:0 2px 8px rgba(0,0,0,.1)}
+.item.pos{border-left-color:#16a34a}.item.neu{border-left-color:#9ca3af}.item.neg{border-left-color:#dc2626;background:#fffafa}
+.item-top{display:flex;align-items:flex-start;gap:8px;margin-bottom:5px}
+.item-title{font-size:13px;font-weight:600;color:#1d4ed8;text-decoration:none;flex:1;line-height:1.4;word-break:break-all}
+.item-title:hover{text-decoration:underline}
+.item-title.no-link{color:#374151;cursor:default}
+.badges{display:flex;gap:4px;flex-wrap:wrap;flex-shrink:0;align-items:flex-start}
+.badge{display:inline-flex;align-items:center;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:600;white-space:nowrap;line-height:1.4}
+.b-platform{color:#fff}.b-sent-pos{background:#dcfce7;color:#15803d}.b-sent-neu{background:#f3f4f6;color:#4b5563}.b-sent-neg{background:#fee2e2;color:#b91c1c}.b-type{background:#f5f3ff;color:#7c3aed;border:1px solid #ede9fe}
+.item-meta{font-size:11px;color:#9ca3af;margin-bottom:4px}
+.item-summary{font-size:12px;color:#4b5563;line-height:1.65}
+.item-topics{display:flex;gap:3px;flex-wrap:wrap;margin-top:5px}
+.topic{background:#f1f5f9;color:#475569;padding:1px 7px;border-radius:10px;font-size:10px}
+.item-link-row{margin-top:6px}
+.item-link{font-size:11px;color:#1d4ed8;text-decoration:none;display:inline-flex;align-items:center;gap:3px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:4px;padding:2px 8px}
+.item-link:hover{background:#dbeafe}
+.loader,.empty{text-align:center;padding:36px;color:#9ca3af;background:#fff;border-radius:10px}
+.spin{display:inline-block;width:28px;height:28px;border:3px solid #e5e7eb;border-top-color:#1d4ed8;border-radius:50%;animation:sp .7s linear infinite;margin-bottom:8px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.monthly-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;background:#fefce8;border:1px solid #fde047;border-radius:12px;font-size:11px;color:#92400e;margin-bottom:10px}
+@media(max-width:600px){.stats{grid-template-columns:repeat(2,1fr)}.charts{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="hd">
+  <div class="hd-left">
+    <h1>📡 徐工汉云 · 全媒体舆情监控</h1>
+    <p>央媒 · 科技媒体 · 财经媒体 · 社交平台 · 自媒体 · 国际媒体</p>
+  </div>
+  <div class="hd-right">
+    <div class="hd-date" id="hdDate">—</div>
+    <span id="genAt" style="font-size:11px;color:rgba(255,255,255,.5);margin-right:4px">更新于 2026-06-16 09:15</span>
+    <button class="btn-hd btn-report" onclick="showMonthReportModal()">📊 月报</button>
+    <button class="btn-hd btn-refresh" onclick="init()">↻ 刷新</button>
+  </div>
+</div>
+
+<div class="period-bar">
+  <button class="period-tab active" onclick="setPeriod('day')" id="tab-day">日报</button>
+  <button class="period-tab" onclick="setPeriod('week')" id="tab-week">周报</button>
+  <button class="period-tab" onclick="setPeriod('month')" id="tab-month">月报</button>
+  <div class="period-sep"></div>
+  <div class="period-nav">
+    <button class="nav-arrow" onclick="navPrev()">&#8249;</button>
+    <button class="nav-label-btn" id="navLabelBtn" onclick="toggleCalPicker(event)">
+      <span>📅</span><span class="label-text" id="navLabelText">—</span><span class="drop-arrow">▼</span>
+    </button>
+    <button class="nav-arrow" onclick="navNext()">&#8250;</button>
+  </div>
+</div>
+
+<div id="calPickerOverlay" onclick="hideCalPicker()">
+  <div id="calPickerPopup" onclick="event.stopPropagation()">
+    <div class="cp-header">
+      <button class="cp-nav" onclick="cpNavMonth(-1)">&#8249;</button>
+      <div class="cp-month-label" id="cpMonthLabel">—</div>
+      <button class="cp-nav" onclick="cpNavMonth(1)">&#8250;</button>
+    </div>
+    <div class="cp-dow-row">
+      <div class="cp-dow">一</div><div class="cp-dow">二</div><div class="cp-dow">三</div>
+      <div class="cp-dow">四</div><div class="cp-dow">五</div><div class="cp-dow">六</div><div class="cp-dow">日</div>
+    </div>
+    <div class="cp-grid" id="cpGrid"></div>
+    <div class="cp-legend">
+      <div class="cp-legend-item"><div class="cp-legend-swatch has-data"></div>日数据</div>
+      <div class="cp-legend-item"><div class="cp-legend-swatch has-neg"></div>含负面</div>
+      <div class="cp-legend-item"><div class="cp-legend-swatch monthly"></div>月度汇总</div>
+    </div>
+  </div>
+</div>
+
+
+
+
+<div id="monthReportOverlay" onclick="hideModal('monthReportOverlay')">
+  <div class="report-shell" onclick="event.stopPropagation()">
+    <div class="report-toolbar">
+      <span class="report-toolbar-title" id="reportTitle">📊 舆情月报</span>
+      <div class="report-toolbar-actions">
+        <button class="btn-submit" onclick="exportReportHtml()">⬇️ 导出 HTML → PDF</button>
+        <button class="btn-cancel" onclick="hideModal('monthReportOverlay')">关闭</button>
+      </div>
+    </div>
+    <div id="reportContent"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<div class="page" id="page">
+  <div class="loader"><div class="spin"></div><br>正在初始化数据…</div>
+</div>
+
+<script>
+window.onerror = function(msg, src, line, col, err) {
+  var pg = document.getElementById('page');
+  if (pg && pg.querySelector('.spin')) {
+    pg.innerHTML = '<div class="empty">❌ 脚本错误：' + msg + '<br><small>' + src + ':' + line + '</small><br><br><button onclick="location.reload()" style="padding:6px 14px;background:#1d4ed8;color:#fff;border:none;border-radius:6px;cursor:pointer">↻ 重新加载</button></div>';
+  }
+};
+
+var YUQING_DATA = [{"date": "2026-06-15", "data": {"date": "2026-06-15", "company": "徐工汉云", "summary": {"total": 1, "by_platform": {"行业媒体": 1}, "sentiment_distribution": {"正面": 1, "中性": 0, "负面": 0}, "negative_alerts": [], "overall_description": "共收录 1 条，按实际发布日期整理。"}, "items": [{"title": "沿着总书记的足迹·科技系列 |\"学习强国\"推出江苏徐工篇", "publish_date": "2026-06-15", "source": "铁甲工程机械网", "url": "https://www.cehome.com/news/20260615/384787.shtml", "platform": "行业媒体", "summary": "\"学习强国\"平台《沿着总书记的足迹·科技系列》推出江苏徐工篇，上线不到一天专题视频播放量突破185万次。文章回顾习近平总书记2017年考察徐工时称赞\"徐工汉云工业互联网平台是能为设备提供精准服务的平台\"的嘱托，记录九年来徐工汉云连接设备超175万辆、产品销往全球190多个国家和地区等发展成就。", "sentiment": "正面"}]}}, {"date": "2026-06-12", "data": {"date": "2026-06-12", "company": "徐工汉云", "summary": {"total": 3, "by_platform": {"行业媒体": 2, "财经媒体": 1}, "sentiment_distribution": {"正面": 3, "中性": 0, "负面": 0}, "negative_alerts": [], "overall_description": "共收录 3 条，按实际发布日期整理。"}, "items": [{"title": "苏子孟会长受邀参加徐工西南大区成立活动", "publish_date": "2026-06-12", "source": "铁甲工程机械网", "url": "https://www.cehome.com/news/20260612/384637.shtml", "platform": "行业媒体", "summary": "6月11日徐工西南大区正式成立，中国工程机械工业协会会长苏子孟、简阳市长苏呈祥、徐工机械副总裁孟文等出席。活动现场徐工汉云总经理王永飞作工程机械数字化、智能化发展主题分享，西南大区将落地新技术场景化解决方案，深化区域协同。", "sentiment": "正面"}, {"title": "数智汇西南，携手启新篇丨徐工西南大区扬帆启航！", "publish_date": "2026-06-12", "source": "同花顺财经", "url": "https://stock.10jqka.com.cn/20260612/c677431628.shtml", "platform": "财经媒体", "summary": "徐工西南大区6月11日正式启航，来源自徐工机械官微。大区围绕重点场景组建\"铁三角\"团队，徐工汉云总经理王永飞作工程机械数字化、智能化发展主题分享，HANYUN OS作为智能服务底座统一承载18大施工场景，赋能西南市场高质量发展。", "sentiment": "正面"}, {"title": "《徐州日报》头版头条报道徐工汉云", "publish_date": "2026-06-12", "source": "第一工程机械网", "url": "https://news.d1cm.com/20260612189451.shtml", "platform": "行业媒体", "summary": "《徐州日报》6月5日头版头条报道徐工汉云\"工业物联网赋能工程机械行业领航工厂建设\"项目入选工信部2025年度物联网赋能行业发展典型案例。汉云\"13681\"领航工厂模式助力徐工重型产线平衡提升15%、交付周期缩短55%，已推广至全国4000多家中小企业，平台连接全球超175万台设备，覆盖92个行业领域。", "sentiment": "正面"}]}}, {"date": "2026-06-08", "data": {"date": "2026-06-08", "company": "徐工汉云", "summary": {"total": 3, "by_platform": {"国际媒体": 3}, "sentiment_distribution": {"正面": 3, "中性": 0, "负面": 0}, "negative_alerts": [], "overall_description": "共收录 3 条，按实际发布日期整理。"}, "items": [{"id": "20260608-13", "platform": "The Manila Times", "platform_tag": "国际媒体", "badge_color": "#6b7280", "media_type": "国际媒体", "title": "XCMG CONNECT Reshapes Industrial Service Ecosystem: Connect Every Customer, Every Machine, Every Jobsite", "url": "https://www.manilatimes.net/2026/06/08/tmt-newswire/pr-newswire/connect-every-customer-every-machine-every-jobsite-xcmg-connect-reshapes-industrial-service-ecosystem/2360601", "publish_date": "2026-06-08", "author": "The Manila Times / PR Newswire", "summary": "徐工在第八届国际客户节上全球正式发布XCMG CONNECT数字化服务生态系统，由XCMG ONE、Maia AI智能体和HANYUN OS三大核心组$��构成。平台融合「$��$��两翼」数字架构，将设备、数据、服务和工地管理整合$��一$��。HANYUN OS统一覆盖18大建设场景，实现设备、工地与管理的智能连接。", "sentiment": "正面", "content_type": "报道", "key_topics": ["XCMG CONNECT", "HANYUN OS", "Maia AI", "第八届国际客户节", "数字化服务生态"]}, {"id": "20260608-14", "platform": "AI Journal", "platform_tag": "国际媒体", "badge_color": "#6b7280", "media_type": "国际媒体", "title": "Green Intelligence for a Better World: Global Partners Gather for the 8th XCMG International Customer Festival", "url": "https://aijourn.com/green-intelligence-for-a-better-world-global-partners-gather-for-the-8th-xcmg-international-customer-festival/", "publish_date": "2026-06-08", "author": "AI Journal", "summary": "国际AI媒体报道第八届徐工国际客户节在徐州盛大举行，徐工汉云发布XCMG CONNECT服务生态系统。活动$��「绿色智能，共创美好世界」为主题，汇聚全球合$��$��伴，展示徐工以数字化、智能化驱动工程机械服务升级的最新成果，Maia多语言AI智能体首次亮相。", "sentiment": "正面", "content_type": "报道", "key_topics": ["国际客户节", "Maia AI", "绿色智能", "XCMG CONNECT", "工程机械数字化"]}, {"id": "20260608-15", "platform": "Thailand Business News", "platform_tag": "国际媒体", "badge_color": "#6b7280", "media_type": "国际媒体", "title": "XCMG CONNECT Reshapes Industrial Service Ecosystem", "url": "https://www.thailand-business-news.com/pr-news/connect-every-customer-every-machine-every-jobsite-xcmg-connect-reshapes-industrial-service-ecosystem", "publish_date": "2026-06-08", "author": "Thailand Business News", "summary": "泰国商业新闻转载徐工XCMG CONNECT发布公告，报道该平台如何通过统一数字服务架构赋能全球工程机械客户。平台整合设备监控、AI辅助诊断和全球服务协调功能，支持更快、更智能的设备管理，面向东南亚及全球市场持续拓展。", "sentiment": "正面", "content_type": "报道", "key_topics": ["XCMG CONNECT", "东南亚", "设备监控", "AI诊断", "国际化"]}]}}, {"date": "2026-06-05", "data": {"date": "2026-06-05", "company": "徐工汉云", "summary": {"total": 1, "by_platform": {"官方发布": 1}, "sentiment_distribution": {"正面": 1, "中性": 0, "负面": 0}, "negative_alerts": [], "overall_description": "共收录 1 条，按实际发布日期整理。"}, "items": [{"id": "20260605-006", "platform": "徐工汉云官网", "platform_tag": "官方发布", "badge_color": "#1d4ed8", "media_type": "官方", "title": "国家级跨行领域工业互联网平台 — 徐工汉云平台介绍", "url": "https://hanyunplat.com/about", "publish_date": "2026-06-05", "author": "徐工汉云", "summary": "徐工汉云官网介绍平台最新状态：连接全球161万台设备，覆盖90+细分行$��，服务7万余家企业，已入选国家双跨工业互联网平台六年，获工信部A级评定，平台布局智能制造、车联网及无人化三大赛道。", "sentiment": "正面", "content_type": "公告", "key_topics": ["工业互联网平台", "161万台设备", "国家双跨"]}]}}, {"date": "2026-06-01", "data": {"date": "2026-06-01", "company": "徐工汉云", "summary": {"total": 1, "by_platform": {"国际媒体": 1}, "sentiment_distribution": {"正面": 0, "中性": 1, "负面": 0}, "negative_alerts": [], "overall_description": "共收录 1 条，按实际发布日期整理。"}, "items": [{"id": "20260605-006", "platform": "PitchBook", "platform_tag": "国际媒体", "badge_color": "#6b7280", "media_type": "国际媒体", "title": "XCMG HANYUN 2026 Company Profile: Valuation, Funding & Investors", "url": "https://pitchbook.com/profiles/company/399229-93", "publish_date": "2026-06-01", "author": "PitchBook", "summary": "PitchBook 2026年持续更新徐工汉云公司档案，涵盖估值、融资历史及投资方信息，显示累计融资约9210万美元，投资方包括徐左金龙湖控股集团、国开制造业转型升级基金、国盛集团等。持续被国际资本数据库追踪，反映全球投资者对该公司关注度保持较高水平。", "sentiment": "中性", "content_type": "分析", "key_topics": ["融资", "估值", "投资方", "国际资本关注"]}]}}, {"date": "2026-05-22", "data": {"date": "2026-05-22", "company": "徐工汉云", "summary": {"total": 1, "by_platform": {"行业媒体": 1}, "sentiment_distribution": {"正面": 1, "中性": 0, "负面": 0}, "negative_alerts": [], "overall_description": "共收录 1 条，按实际发布日期整理。"}, "items": [{"title": "XCMG CONNECT——《智连全球 服务无界》全球发布", "publish_date": "2026-05-22", "source": "第一工程机械网", "url": "https://news.d1cm.com/20260522188762.shtml", "platform": "行业媒体", "summary": "5月20日徐工第八届国际客户节开幕式上，XCMG CONNECT正式全球发布，来自全球2500余位客户代表、行业专家及合作伙伴共聚盛典。发布以XCMG ONE、Maim智能体、HANYUN OS为核心的\"一体两翼\"数字化架构，HANYUN OS作为智能服务底座统一承载18大施工场景，打通设备、工地到管理全链条，彻底重塑产业服务生态。", "sentiment": "正面"}]}}, {"date": "2026-05-16", "data": {"date": "2026-05-16", "company": "徐工汉云", "summary": {"total": 1, "by_platform": {"行业媒体": 1}, "sentiment_distribution": {"正面": 1, "中性": 0, "负面": 0}, "negative_alerts": [], "overall_description": "共收录 1 条，按实际发布日期整理。"}, "items": [{"title": "奋进\"十五五\"实干谱新篇｜徐工汉云第二届第二次职工（工会会员）代表大会胜利召开", "publish_date": "2026-05-16", "source": "第一工程机械网", "url": "https://news.d1cm.com/20260516188561.shtml", "platform": "行业媒体", "summary": "5月12日徐工汉云召开第二届第二次职工代表大会，总经理王永飞发表重要讲话，强调要打造\"未来视角、穿透现场、快速创造、闭环\"四大能力，建设世界一流团队，为徐工珠峰登顶创造价值。大会表彰2025年度先进集体、先进个人及技能竞赛获奖团队，审议通过8个报告及3项制度。", "sentiment": "正面"}]}}, {"date": "2026-05-01", "data": {"date": "2026-05-01", "company": "徐工汉云", "summary": {"total": 1, "by_platform": {"媒体": 1}, "sentiment_distribution": {"正面": 1, "中性": 0, "负面": 0}, "negative_alerts": [], "overall_description": "共收录 1 条，按实际发布日期整理。"}, "items": [{"id": "20260605-004", "platform": "HCX Construction Machinery", "platform_tag": "媒体", "badge_color": "#6b7280", "media_type": "媒体", "title": "XCMG's HANYUN Platform Earns Dual Top-Tier Accolades as a National Industrial Internet Leader and Global High-Growth Innovator", "url": "https://www.hcxmachinery.com/xcmgs-hanyun-platform-earns-dual-top-tier-accolades-as-a-national-industrial-internet-leader-and-global-high-growth-innovator/", "publish_date": "2026-05-01", "author": "HCX Machinery", "summary": "报道徐工汉云在2026年获得双重荣誉：工信部2025年\"双跨\"平台动态评估A级（连续多年全国第二）及2026胡润全球瞪羚峰会\"全球瞪羚\"榜单，成为徐州唯一获此殊荣的企业。HANYUN OS智能版完成战略升级，以徐工重型机械等灯塔工厂为试炼场所。", "sentiment": "正面", "content_type": "报道", "key_topics": ["双跨平台A级", "全球瞪羚", "HANYUN OS Intelligent", "行业荣誉"]}]}}, {"date": "2026-04-29", "data": {"date": "2026-04-29", "company": "徐工汉云", "summary": {"total": 1, "by_platform": {"官方发布": 1}, "sentiment_distribution": {"正面": 0, "中性": 1, "负面": 0}, "negative_alerts": [], "overall_description": "共收录 1 条，按实际发布日期整理。"}, "items": [{"id": "20260606-010", "platform": "cninfo.com", "platform_tag": "官方发布", "badge_color": "#1d4ed8", "media_type": "官方", "title": "徐工集团工程机械股份有限公司2025年度报告（含汉云业务披露）", "url": "https://static.cninfo.com.cn/finalpage/2026-04-29/1225240627.PDF", "publish_date": "2026-04-29", "author": "徐工机械000425）", "summary": "徐工机械2025年年度报告于2026年4月29日在巨潮资讯网正式披露，报告中详细介绍了控股子公司徐工汉云的业务进展：聚焦智能车联网赋能数字化营销，100台纯电无人驾驶矿卡在华能伊敏煤矿投运，实现露天矿山装运卸全流程无人化国内首发。汉云上市辅导工作持续推进中。", "sentiment": "中性", "content_type": "公告", "key_topics": ["年报", "无人矿山", "上市辅导"]}]}}, {"date": "2026-04-27", "data": {"date": "2026-04-27", "company": "徐工汉云", "summary": {"total": 1, "by_platform": {"行业媒体": 1}, "sentiment_distribution": {"正面": 1, "中性": 0, "负面": 0}, "negative_alerts": [], "overall_description": "共收录 1 条，按实际发布日期整理。"}, "items": [{"title": "徐工汉云入选省高质量数据集建设先行先试联合体及项目名单", "publish_date": "2026-04-27", "source": "第一工程机械网", "url": "https://news.d1cm.com/20260427188219.shtml", "platform": "行业媒体", "summary": "江苏省工信厅公布69个\"工业和信息化领域行业高质量数据集建设先行先试\"联合体及项目名单，徐工汉云成功入选，牵头实施\"工程机械车联网高质量数据集建设项目\"。该项目聚焦车联网数据采集，推动高质量行业数据集在设备运维、市场分析、智能决策等场景深度落地，标志着徐工汉云数据治理与AI融合能力获省级权威认可。", "sentiment": "正面"}]}}, {"date": "2026-03-05", "data": {"date": "2026-03-05", "company": "徐工汉云", "summary": {"total": 2, "by_platform": {"科技媒体": 2}, "sentiment_distribution": {"正面": 2, "中性": 0, "负面": 0}, "negative_alerts": [], "overall_description": "共收录 2 条，按实际发布日期整理。"}, "items": [{"id": "20260608-11", "platform": "CCM工业互联网平台", "platform_tag": "科技媒体", "badge_color": "#6b7280", "media_type": "科技媒体", "title": "双跨新秀，深度融合DeepSeek，徐工汉云以工业互联网+AI引领中国智造", "url": "https://ccmchannel.com/xcmg-hanyun-deepseek-industrial-internet/", "publish_date": "2026-03-05", "author": "CCM工业互联网平台", "summary": "行业观察媒体对徐工汉云近年来的竞争格局进行深度分析，重点围绕行业地位和徐工汉云以工业互联网+AI引领中国智造的核心路径，结合中国在制造强国战略下工业数字化升级需求的政策背景，探讨徐工汉云的未来发展潜力。", "sentiment": "正面", "content_type": "分析", "key_topics": ["双跨", "DeepSeek", "数字化", "工业互联网"]}, {"id": "20260608-11", "platform": "CCM工程机械媒体", "platform_tag": "科技媒体", "badge_color": "#6b7280", "media_type": "科技媒体", "title": "瞪羚踏云，深度融合DeepSeek，徐工以工业互联网+AI布局两会新亮点", "url": "https://ccmchannel.com/%E4%B8%A4%E4%BC%9A%E6%96%B0%E5%8A%9B%E9%87%8F-%E7%9E%AA%E7%BE%9A%E8%B8%8F%E4%BA%91%EF%BC%8C%E6%B7%B1%E5%BA%A6%E8%9E%8D%E5%90%88deepseek%EF%BC%8C%E5%BE%90%E5%B7%A5/", "publish_date": "2026-03-05", "author": "CCM工程机械媒体", "summary": "全球工程机械媒体平台CCM聚焦徐工汉云在两会前后的传播热度，报道其荣登胡润全球瞪羚榜单及与DeepSeek深度融合双重利好，称徐工汉云正在工业互联网+AI赛道上确立全球竞争优势，成为中国制造业数字化转型的标杆案例。", "sentiment": "正面", "content_type": "报道", "key_topics": ["瞪羚榜", "DeepSeek", "两会", "工程机械"]}]}}, {"date": "2026-03-01", "data": {"date": "2026-03-01", "company": "徐工汉云", "summary": {"total": 1, "by_platform": {"国际媒体": 1}, "sentiment_distribution": {"正面": 1, "中性": 0, "负面": 0}, "negative_alerts": [], "overall_description": "共收录 1 条，按实际发布日期整理。"}, "items": [{"id": "20260608-09", "platform": "AutomationInside", "platform_tag": "国际媒体", "badge_color": "#6b7280", "media_type": "国际媒体", "title": "XCMG HANYUN Deeply Integrates with DeepSeek: Pioneering a New Era of Industrial Intelligence", "url": "https://automationinside.com/article/xcmg-hanyun-deeply-integrates-with-deepseek-pioneering-a-new-era-of-industrial-intelligence", "publish_date": "2026-03-01", "author": "AutomationInside", "summary": "工业自动化专业媒体深度报道徐工汉云与DeepSeek集成方案。文章详解技术架构：以DeepSeek为基础大模型，结合专业模型协同架构，自主解析需求、生成深度学习代码并完成训练验证，构建专业模型库，大幅降低工业AI落地门槛。", "sentiment": "正面", "content_type": "报道", "key_topics": ["DeepSeek", "工业AI", "技术架构", "低代码"]}]}}][];
+var GENERATED_AT = '2026-06-16 09:15';
+var CUTOFF    = '2026-03-01';
+
+var PLAT_COLORS = {
+  '小红书':'#ff2442','哔哩哔哩':'#00a1d6','B站':'#00a1d6','微博':'#e6162d','知乎':'#0084ff',
+  '抖音':'#1a1a1a','微信公众号':'#07c160','今日头条':'#e5402b','百家号':'#2932e1',
+  '新华网':'#cc0000','人民网':'#cc0000','央视网':'#cc0000','中新网':'#cc0000','央媒':'#cc0000',
+  '36氪':'#3d9970','虎嗅':'#f26522','钛媒体':'#1296db','亿欧':'#ff6b35','财联社':'#d4380d',
+  '界面新闻':'#1a1a1a','第一财经':'#00529b','21财经':'#003366','华尔街见闻':'#1a73e8',
+  'TechCrunch':'#1db954','Reuters':'#ff8000','Bloomberg':'#1f78b4',
+  '官方发布':'#1d4ed8','徐工集团':'#1d4ed8'
+};
+function platColor(tag) {
+  if (!tag) return '#6b7280';
+  var keys = Object.keys(PLAT_COLORS);
+  for (var i = 0; i < keys.length; i++) { if (tag.indexOf(keys[i]) >= 0) return PLAT_COLORS[keys[i]]; }
+  return '#6b7280';
+}
+
+var allFiles   = [];
+var period     = 'day';
+var cursor     = '';
+var typeFilter = 'all';
+var sentFilter = 'all';
+var charts     = {};
+var cpYear     = 0;
+var cpMonth    = 0;
+var prevSnap   = {};
+
+function fileKey(pd) {
+  if (!pd) return null;
+  var d = pd.slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return null;
+  return d >= CUTOFF ? d : pd.slice(0, 7);
+}
+function findEntry(dateStr) {
+  if (!dateStr) return null;
+  var e = allFiles.filter(function(f){ return f.date === dateStr; })[0];
+  if (e) return e;
+  if (dateStr.length === 10 && dateStr < CUTOFF) {
+    e = allFiles.filter(function(f){ return f.date === dateStr.slice(0,7); })[0];
+  }
+  return e || null;
+}
+function fmtDate(d) {
+  return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
+}
+function pad(n) { return String(n).padStart(2,'0'); }
+function offsetDate(str, n) {
+  var d = new Date(str + 'T00:00:00'); d.setDate(d.getDate() + n); return fmtDate(d);
+}
+function weekStart(str) {
+  var d = new Date(str + 'T00:00:00'); var dow = (d.getDay()+6)%7; d.setDate(d.getDate()-dow); return fmtDate(d);
+}
+
+function showModal(id) { document.getElementById(id).classList.add('show'); }
+function hideModal(id) { document.getElementById(id).classList.remove('show'); }
+var _tt;
+function showToast(msg, ms) {
+  ms = ms || 3000;
+  var t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(_tt); _tt = setTimeout(function(){ t.classList.remove('show'); }, ms);
+}
+
+function init() {
+  cursor = fmtDate(new Date());
+  document.getElementById('hdDate').textContent = cursor;
+  document.getElementById('genAt').textContent = '更新于 ' + GENERATED_AT;
+  allFiles = YUQING_DATA;
+  if (!allFiles.length) {
+    document.getElementById('page').innerHTML = '<div class="empty">📭 暂无舆情数据</div>';
+    return;
+  }
+  render();
+}
+
+
+
+
+
+
+
+
+function showMonthReportModal() {
+  var base = new Date(cursor+'T00:00:00');
+  var year = base.getFullYear(); var mon = base.getMonth();
+  var label = year + '年' + (mon+1) + '月';
+  var daysInMon = new Date(year, mon+1, 0).getDate();
+  var monthDays = [];
+  for (var d=1; d<=daysInMon; d++) monthDays.push(fmtDate(new Date(year, mon, d)));
+  var agg = aggregateDays(monthDays);
+  if (!agg.items.length) { showToast('本月暂无数据，无法生成月报'); return; }
+  document.getElementById('reportTitle').textContent = '📊 ' + label + ' 舆情月报';
+  document.getElementById('reportContent').innerHTML = buildReport(agg, label, year, mon+1, daysInMon);
+  showModal('monthReportOverlay');
+}
+
+function buildReport(agg, label, year, mon, daysInMon) {
+  var items    = agg.items;
+  var s        = agg.summ.sentiment_distribution || {};
+  var total    = items.length;
+  var negItems = items.filter(function(i){ return i.sentiment==='负面'; });
+  var posItems = items.filter(function(i){ return i.sentiment==='正面'; });
+  var neuItems = items.filter(function(i){ return i.sentiment!=='负面'&&i.sentiment!=='正面'; });
+  var byPlat   = agg.summ.by_platform || {};
+  var platArr  = Object.keys(byPlat).map(function(k){ return [k, byPlat[k]]; }).sort(function(a,b){return b[1]-a[1];}).slice(0,12);
+  var maxCnt   = platArr.length ? platArr[0][1] : 1;
+  var posRate  = total ? Math.round((s['正面']||0)/total*100) : 0;
+  var negRate  = total ? Math.round((s['负面']||0)/total*100) : 0;
+  var chNums   = ['一','二','三','四','五','六'];
+  var secN     = 1;
+
+  var desc = (s['负面']||0) > 2
+    ? '本月共监测到 ' + total + ' 条舆情报道，覆盖 ' + Object.keys(byPlat).length + ' 个媒体平台。正面占比 ' + posRate + '%，负面占比 ' + negRate + '%，存在一定负面舆情压力，建议重点关注预警板块并及时跟进处理。'
+    : '本月共监测到 ' + total + ' 条舆情报道，覆盖 ' + Object.keys(byPlat).length + ' 个媒体平台。正面占比 ' + posRate + '%，整体舆情态势良好，品牌形象健康。';
+
+  var css = '<style>';
+  css += '.rpt{font-family:"PingFang SC","Microsoft YaHei",sans-serif;font-size:13px;color:#1a1a2e;line-height:1.7}';
+  css += '.rpt-cover{background:linear-gradient(135deg,#0f172a,#1e3a5f,#1565c0);color:#fff;border-radius:12px;padding:36px;margin-bottom:24px}';
+  css += '.rpt-cover h1{font-size:22px;font-weight:800;margin-bottom:4px}';
+  css += '.rpt-cover h2{font-size:14px;font-weight:400;opacity:.8;margin-bottom:16px}';
+  css += '.rpt-cover-meta{font-size:11px;opacity:.6;display:flex;gap:20px;flex-wrap:wrap}';
+  css += '.rpt h3{font-size:14px;font-weight:700;color:#1e3a5f;border-left:4px solid #1d4ed8;padding-left:10px;margin:22px 0 12px}';
+  css += '.rpt-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}';
+  css += '.rpt-stat{background:#f8faff;border:1px solid #e5e9f5;border-radius:8px;padding:14px;text-align:center}';
+  css += '.rpt-stat .rv{font-size:28px;font-weight:800}.rpt-stat .rl{font-size:11px;color:#6b7280;margin-top:2px}';
+  css += '.rc-blue{color:#1d4ed8}.rc-green{color:#16a34a}.rc-gray{color:#6b7280}.rc-red{color:#dc2626}';
+  css += '.rpt-desc{background:#f8faff;border:1px solid #e5e9f5;border-radius:8px;padding:14px;font-size:13px;color:#374151;margin-bottom:18px;line-height:1.8}';
+  css += '.rpt-bar{display:flex;align-items:center;gap:8px;margin-bottom:5px}';
+  css += '.rpt-bar-name{width:90px;font-size:12px;color:#374151;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0}';
+  css += '.rpt-bar-track{flex:1;height:14px;background:#f0f2f7;border-radius:4px;overflow:hidden}';
+  css += '.rpt-bar-fill{height:100%;border-radius:4px}';
+  css += '.rpt-bar-cnt{font-size:11px;color:#6b7280;width:28px;text-align:right;flex-shrink:0}';
+  css += '.neg-box{background:#fff5f5;border:1px solid #fca5a5;border-left:4px solid #dc2626;border-radius:8px;padding:14px;margin-bottom:18px}';
+  css += '.neg-box-ttl{font-weight:700;color:#b91c1c;margin-bottom:10px}';
+  css += '.neg-item{padding:8px 0;border-bottom:1px solid #fee2e2}';
+  css += '.neg-item:last-child{border-bottom:none}';
+  css += '.neg-item a{color:#b91c1c;font-weight:600;text-decoration:none}';
+  css += '.neg-meta{font-size:11px;color:#9ca3af;margin-top:2px}';
+  css += '.neg-sum{font-size:12px;color:#6b7280;margin-top:3px;line-height:1.6}';
+  css += '.ok-box{background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:12px;color:#15803d;font-size:13px;margin-bottom:18px}';
+  css += '.rpt-art{border:1px solid #e5e7eb;border-radius:7px;padding:10px 12px;margin-bottom:8px}';
+  css += '.rpt-art.pos{border-left:3px solid #16a34a}.rpt-art.neu{border-left:3px solid #9ca3af}.rpt-art.neg{border-left:3px solid #dc2626;background:#fffafa}';
+  css += '.rpt-art-ttl{font-size:13px;font-weight:600;margin-bottom:3px}';
+  css += '.rpt-art-ttl a{color:#1d4ed8;text-decoration:none}';
+  css += '.rpt-art-meta{font-size:11px;color:#9ca3af;margin-bottom:4px}';
+  css += '.rpt-art-sum{font-size:12px;color:#4b5563;line-height:1.6}';
+  css += '.sb{display:inline-block;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:600;margin-left:5px}';
+  css += '.sb-pos{background:#dcfce7;color:#15803d}.sb-neu{background:#f3f4f6;color:#4b5563}.sb-neg{background:#fee2e2;color:#b91c1c}';
+  css += '.rpt-divider{height:1px;background:#e5e7eb;margin:18px 0}';
+  css += '.rpt-footer{margin-top:28px;padding-top:12px;border-top:1px solid #e5e7eb;text-align:center;font-size:11px;color:#9ca3af}';
+  css += '</style>';
+
+  var html = css + '<div class="rpt">';
+  html += '<div class="rpt-cover"><h1>徐工汉云 · 全媒体舆情月报</h1><h2>' + label + ' 媒体曝光与舆论态势分析</h2>';
+  html += '<div class="rpt-cover-meta"><span>📅 周期：' + year + '年' + mon + '月1日 – ' + mon + '月' + daysInMon + '日</span><span>🕐 生成：' + new Date().toLocaleString('zh-CN') + '</span></div></div>';
+
+  html += '<h3>' + chNums[secN-1] + '、月度概览</h3>';
+  html += '<div class="rpt-stats"><div class="rpt-stat"><div class="rv rc-blue">' + total + '</div><div class="rl">总曝光量</div></div><div class="rpt-stat"><div class="rv rc-green">' + (s['正面']||0) + '</div><div class="rl">✅ 正面 ' + posRate + '%</div></div><div class="rpt-stat"><div class="rv rc-gray">' + (s['中性']||0) + '</div><div class="rl">⬜ 中性</div></div><div class="rpt-stat"><div class="rv rc-red">' + (s['负面']||0) + '</div><div class="rl">❌ 负面 ' + negRate + '%</div></div></div>';
+  html += '<div class="rpt-desc">' + desc + '</div>'; secN++;
+
+  html += '<h3>' + chNums[secN-1] + '、媒体来源分布</h3><div style="max-width:480px;margin-bottom:18px">';
+  platArr.forEach(function(pair) {
+    var pct = Math.round(pair[1]/maxCnt*100);
+    var c   = platColor(pair[0]);
+    html += '<div class="rpt-bar"><div class="rpt-bar-name" title="' + pair[0] + '">' + pair[0] + '</div><div class="rpt-bar-track"><div class="rpt-bar-fill" style="width:' + Math.max(pct,4) + '%;background:' + c + '"></div></div><div class="rpt-bar-cnt">' + pair[1] + '</div></div>';
+  });
+  html += '</div>'; secN++;
+
+  html += '<h3>' + chNums[secN-1] + '、负面舆情预警</h3>';
+  if (negItems.length) {
+    html += '<div class="neg-box"><div class="neg-box-ttl">⚠️ 本月共 ' + negItems.length + ' 条负面舆情，建议及时跟进处理</div>';
+    negItems.slice(0,10).forEach(function(i) {
+      html += '<div class="neg-item"><a href="' + (i.url||'#') + '" target="_blank">' + (i.title||'无标题') + '</a><div class="neg-meta">' + (i.platform_tag||i.platform||'') + ' · ' + (i.publish_date||'') + ' · ' + (i.author||'') + '</div>' + (i.summary?'<div class="neg-sum">'+i.summary+'</div>':'') + '</div>';
+    });
+    html += '</div>';
+  } else {
+    html += '<div class="ok-box">✅ 本月无负面舆情记录，品牌整体形象健康，舆论环境正向。</div>';
+  }
+  secN++;
+
+  if (posItems.length) {
+    html += '<h3>' + chNums[secN-1] + '、重点正面报道（TOP ' + Math.min(posItems.length,5) + '）</h3>';
+    posItems.slice(0,5).forEach(function(i) {
+      html += '<div class="rpt-art pos"><div class="rpt-art-ttl"><a href="' + (i.url||'#') + '" target="_blank">' + (i.title||'无标题') + '</a><span class="sb sb-pos">正面</span></div><div class="rpt-art-meta">📅 ' + (i.publish_date||'—') + ' · ' + (i.platform_tag||i.platform||'—') + ' · ' + (i.author||'—') + '</div><div class="rpt-art-sum">' + (i.summary||'') + '</div></div>';
+    });
+    secN++;
+  }
+
+  html += '<div class="rpt-divider"></div>';
+  var listItems = negItems.concat(neuItems).concat(posItems).slice(0,40);
+  html += '<h3>' + chNums[secN-1] + '、全量报道列表（共 ' + total + ' 条' + (total>40?'，展示前40条':'') + '）</h3>';
+  listItems.forEach(function(i) {
+    var sc = i.sentiment==='负面'?'neg':i.sentiment==='正面'?'pos':'neu';
+    var sb = i.sentiment==='负面'?'sb-neg':i.sentiment==='正面'?'sb-pos':'sb-neu';
+    html += '<div class="rpt-art ' + sc + '"><div class="rpt-art-ttl"><a href="' + (i.url||'#') + '" target="_blank">' + (i.title||'无标题') + '</a><span class="sb ' + sb + '">' + (i.sentiment||'中性') + '</span></div><div class="rpt-art-meta">📅 ' + (i.publish_date||'—') + ' · ' + (i.platform_tag||i.platform||'—') + ' · ' + (i.author||'—') + '</div><div class="rpt-art-sum">' + (i.summary||'') + '</div></div>';
+  });
+  html += '<div class="rpt-footer"><p>📡 徐工汉云全媒体舆情监控系统 · 由 AI 自动生成，仅供参考</p></div></div>';
+  return html;
+}
+
+function exportReportHtml() {
+  var inner = document.getElementById('reportContent').innerHTML;
+  var full  = '<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><title>徐工汉云舆情月报</title><style>body{max-width:800px;margin:0 auto;padding:30px 36px;background:#fff}@media print{@page{margin:18mm}}</style></head><body>' + inner + '</body></html>';
+  try {
+    var w = window.open('','_blank');
+    if (w) { w.document.write(full); w.document.close(); setTimeout(function(){ try{w.print();}catch(e){} },600); return; }
+  } catch(e){}
+  var a = document.createElement('a');
+  a.href = 'data:text/html;charset=utf-8,' + encodeURIComponent(full);
+  a.download = '徐工汉云月报_' + new Date().toISOString().slice(0,7) + '.html';
+  a.click();
+  showToast('已下载 HTML 文件，浏览器打开后 Ctrl+P 导出 PDF');
+}
+
+function toggleCalPicker(e) {
+  e.stopPropagation();
+  var ov = document.getElementById('calPickerOverlay');
+  if (ov.classList.contains('show')) { hideCalPicker(); return; }
+  var d = new Date(cursor+'T00:00:00'); cpYear = d.getFullYear(); cpMonth = d.getMonth();
+  renderCalPickerMonth();
+  ov.classList.add('show');
+  var popup = document.getElementById('calPickerPopup');
+  var rect  = document.getElementById('navLabelBtn').getBoundingClientRect();
+  var left = rect.left; var top = rect.bottom+6;
+  if (left+300>window.innerWidth-10) left=window.innerWidth-310;
+  if (left<10) left=10;
+  popup.style.left=left+'px'; popup.style.top=top+'px';
+}
+function hideCalPicker() { document.getElementById('calPickerOverlay').classList.remove('show'); }
+function cpNavMonth(delta) {
+  cpMonth+=delta;
+  if(cpMonth<0){cpMonth=11;cpYear--;} if(cpMonth>11){cpMonth=0;cpYear++;}
+  renderCalPickerMonth();
+}
+function renderCalPickerMonth() {
+  var today = fmtDate(new Date());
+  document.getElementById('cpMonthLabel').textContent = cpYear+'年'+(cpMonth+1)+'月';
+  var firstDay = new Date(cpYear,cpMonth,1);
+  var lastDay  = new Date(cpYear,cpMonth+1,0);
+  var startDow = (firstDay.getDay()+6)%7;
+  var daysInMon = lastDay.getDate();
+  var dataMap = {};
+  allFiles.forEach(function(f){ dataMap[f.date]=f.data; });
+  var monthKey  = cpYear+'-'+pad(cpMonth+1);
+  var monthData = dataMap[monthKey];
+  var grid = document.getElementById('cpGrid'); grid.innerHTML='';
+  for (var i=0;i<startDow;i++) { var e=document.createElement('div');e.className='cp-cell cp-empty';grid.appendChild(e); }
+  for (var day=1;day<=daysInMon;day++) {
+    var dateStr = cpYear+'-'+pad(cpMonth+1)+'-'+pad(day);
+    var isFuture=dateStr>today, isToday=dateStr===today, isSel=dateStr===cursor;
+    var dayData  = dataMap[dateStr];
+    var effData  = dayData || (dateStr<CUTOFF ? monthData : null);
+    var isMonthly = !dayData && !!monthData && dateStr<CUTOFF;
+    var cnt = effData ? (effData.items||[]).length : 0;
+    var sd  = (effData && effData.summary && effData.summary.sentiment_distribution) || {};
+    var hasNeg = (sd['负面']||0)>0, hasData = cnt>0;
+    var cls = 'cp-cell';
+    if(isSel) cls+=' cp-selected'; else if(isToday) cls+=' cp-today';
+    if(isFuture) cls+=' cp-future';
+    else if(isMonthly&&hasNeg) cls+=' cp-monthly cp-has-neg';
+    else if(isMonthly) cls+=' cp-monthly';
+    else if(hasNeg) cls+=' cp-has-neg';
+    else if(hasData) cls+=' cp-has-data';
+    var cell=document.createElement('div'); cell.className=cls;
+    var inner='<div class="cp-day-num">'+day+'</div>';
+    if(hasData&&!isFuture){
+      inner+='<div class="cp-count">'+(isMonthly?'月':cnt)+'</div>';
+      inner+='<div class="cp-dots">';
+      if((sd['正面']||0)>0) inner+='<span class="cp-dot pos"></span>';
+      if((sd['中性']||0)>0) inner+='<span class="cp-dot neu"></span>';
+      if((sd['负面']||0)>0) inner+='<span class="cp-dot neg"></span>';
+      inner+='</div>';
+    }
+    cell.innerHTML=inner;
+    if(!isFuture){
+      cell.title = hasData ? dateStr+(isMonthly?'（月度）':'')+' — '+cnt+'条' : dateStr+' — 暂无';
+      (function(ds){
+        cell.onclick=function(){
+          cursor=ds; period='day';
+          document.querySelectorAll('.period-tab').forEach(function(t){t.classList.remove('active');});
+          document.getElementById('tab-day').classList.add('active');
+          typeFilter='all'; sentFilter='all'; hideCalPicker(); render();
+        };
+      })(dateStr);
+    }
+    grid.appendChild(cell);
+  }
+}
+
+function updateNavLabel() {
+  var el=document.getElementById('navLabelText'); if(!el)return;
+  if(period==='day'){
+    var entry=findEntry(cursor); var key=entry?entry.date:cursor;
+    el.textContent=key.length===7?key.slice(0,4)+'年'+parseInt(key.slice(5))+'月（月度）':cursor;
+  } else if(period==='week'){
+    var ws=weekStart(cursor); el.textContent=ws.slice(5)+' ~ '+offsetDate(ws,6).slice(5);
+  } else {
+    var d=new Date(cursor+'T00:00:00'); el.textContent=d.getFullYear()+'年'+(d.getMonth()+1)+'月';
+  }
+  document.getElementById('hdDate').textContent=cursor;
+}
+function setPeriod(p){
+  period=p;
+  document.querySelectorAll('.period-tab').forEach(function(t){t.classList.remove('active');});
+  document.getElementById('tab-'+p).classList.add('active');
+  typeFilter='all'; sentFilter='all'; render();
+}
+function navPrev(){
+  if(period==='day'){
+    var entry=findEntry(cursor);
+    if(entry&&entry.date.length===7){var d=new Date(cursor+'T00:00:00');d.setMonth(d.getMonth()-1);cursor=fmtDate(new Date(d.getFullYear(),d.getMonth(),1));}
+    else cursor=offsetDate(cursor,-1);
+  } else if(period==='week') cursor=offsetDate(weekStart(cursor),-7);
+  else{var d=new Date(cursor+'T00:00:00');d.setMonth(d.getMonth()-1);cursor=fmtDate(new Date(d.getFullYear(),d.getMonth(),1));}
+  render();
+}
+function navNext(){
+  if(period==='day'){
+    var entry=findEntry(cursor);
+    if(entry&&entry.date.length===7){var d=new Date(cursor+'T00:00:00');d.setMonth(d.getMonth()+1);cursor=fmtDate(new Date(d.getFullYear(),d.getMonth(),1));}
+    else cursor=offsetDate(cursor,1);
+  } else if(period==='week') cursor=offsetDate(weekStart(cursor),7);
+  else{var d=new Date(cursor+'T00:00:00');d.setMonth(d.getMonth()+1);cursor=fmtDate(new Date(d.getFullYear(),d.getMonth(),1));}
+  render();
+}
+function selectDay(dateStr){
+  cursor=dateStr; period='day';
+  document.querySelectorAll('.period-tab').forEach(function(t){t.classList.remove('active');});
+  document.getElementById('tab-day').classList.add('active');
+  typeFilter='all'; sentFilter='all'; render();
+}
+
+function render(){
+  destroyCharts(); updateNavLabel();
+  if(period==='day') renderDay();
+  else if(period==='week') renderWeek();
+  else renderMonth();
+}
+
+function renderDay(){
+  var entry=findEntry(cursor);
+  var items=entry?(entry.data.items||[]):[];
+  var summ=entry?(entry.data.summary||{}):{};
+  var isMonthly=entry&&entry.date.length===7;
+  var label=isMonthly?entry.date.slice(0,4)+'年'+parseInt(entry.date.slice(5))+'月（月度）':cursor;
+  var sorted=items.slice().sort(function(a,b){var o={'负面':0,'中性':1,'正面':2};return((o[a.sentiment]||3)-(o[b.sentiment]||3));});
+  var pg='';
+  if(isMonthly) pg+='<div class="monthly-badge">📅 月度汇总 · '+label+'</div>';
+  pg+='<div id="negBanner" class="neg-banner"></div>';
+  pg+='<div class="stats" id="statsRow"></div>';
+  pg+='<div class="charts" id="chartsRow"><div class="chart-c"><div class="chart-ttl">📊 情感分布</div><div class="chart-wrap"><canvas id="cSent"></canvas></div></div><div class="chart-c"><div class="chart-ttl">📂 来源分布</div><div class="chart-wrap"><canvas id="cPlat"></canvas></div></div></div>';
+  pg+='<div id="sumDesc"></div><div class="filters" id="filterBar"></div>';
+  pg+='<div class="list-hdr"><span class="list-ttl">📋 舆情内容</span><span class="list-cnt" id="listCnt"></span></div><div id="itemsWrap"></div>';
+  document.getElementById('page').innerHTML=pg;
+  renderNegBanner(sorted); renderStats(summ,sorted,label);
+  renderSentChart(summ); renderPlatChart(summ);
+  renderSummaryDesc(summ.overall_description,'📝 整体舆情','sumDesc');
+  renderFilters(); renderItems(sorted);
+}
+
+function renderWeek(){
+  var ws=weekStart(cursor); var days=[];
+  for(var i=0;i<7;i++) days.push(offsetDate(ws,i));
+  var agg=aggregateDays(days); var today=fmtDate(new Date());
+  var pg='<div id="negBanner" class="neg-banner"></div><div class="stats" id="statsRow"></div>';
+  pg+='<div class="week-row" id="weekRow"></div>';
+  pg+='<div class="charts" id="chartsRow"><div class="chart-c"><div class="chart-ttl">📊 本周情感</div><div class="chart-wrap"><canvas id="cSent"></canvas></div></div><div class="chart-c"><div class="chart-ttl">📈 每日趋势</div><div class="chart-wrap"><canvas id="cTrend"></canvas></div></div></div>';
+  pg+='<div id="sumDesc"></div><div class="filters" id="filterBar"></div>';
+  pg+='<div class="list-hdr"><span class="list-ttl">📋 本周全部舆情</span><span class="list-cnt" id="listCnt"></span></div><div id="itemsWrap"></div>';
+  document.getElementById('page').innerHTML=pg;
+  var DOW=['周一','周二','周三','周四','周五','周六','周日'];
+  var wr=document.getElementById('weekRow');
+  days.forEach(function(d,i){
+    var entry=findEntry(d); var cnt=entry?(entry.data.items||[]).length:0;
+    var cell=document.createElement('div');
+    cell.className='week-cell'+(d===today?' today':'')+(cursor===d?' selected':'')+(entry?'':' no-data');
+    cell.innerHTML='<div class="wc-dow">'+DOW[i]+'</div><div class="wc-date">'+d.slice(5)+'</div><div class="wc-count">'+(cnt||'—')+'</div>';
+    if(entry)(function(ds){cell.onclick=function(){selectDay(ds);};})(d);
+    wr.appendChild(cell);
+  });
+  renderNegBannerAgg(agg); renderStats(agg.summ,agg.items,ws+' – '+days[6]);
+  renderSentChart(agg.summ); renderWeekTrendChart(days);
+  renderSummaryDesc(autoWeeklySummary(agg,days),'📋 本周舆情总结','sumDesc');
+  renderFilters(); renderItems(agg.items);
+}
+
+function renderMonth(){
+  var base=new Date(cursor+'T00:00:00'), year=base.getFullYear(), mon=base.getMonth();
+  var label=year+'年'+(mon+1)+'月';
+  var firstDay=new Date(year,mon,1), lastDay=new Date(year,mon+1,0);
+  var startDow=(firstDay.getDay()+6)%7;
+  var monthDays=[]; for(var di=1;di<=lastDay.getDate();di++) monthDays.push(fmtDate(new Date(year,mon,di)));
+  var agg=aggregateDays(monthDays); var today=fmtDate(new Date());
+  var dataMap={}; allFiles.forEach(function(f){dataMap[f.date]=f.data;});
+  var monthKey=year+'-'+pad(mon+1); var monthData=dataMap[monthKey];
+  var pg='<div id="negBanner" class="neg-banner"></div><div class="stats" id="statsRow"></div>';
+  pg+='<div class="charts" id="chartsRow"><div class="chart-c"><div class="chart-ttl">📊 本月情感</div><div class="chart-wrap"><canvas id="cSent"></canvas></div></div><div class="chart-c"><div class="chart-ttl">📈 每日趋势</div><div class="chart-wrap"><canvas id="cTrend"></canvas></div></div></div>';
+  pg+='<div class="cal-wrap" id="calWrap"></div>';
+  pg+='<div id="sumDesc"></div><div class="filters" id="filterBar"></div>';
+  pg+='<div class="list-hdr"><span class="list-ttl">📋 本月全部舆情</span><span class="list-cnt" id="listCnt"></span></div><div id="itemsWrap"></div>';
+  document.getElementById('page').innerHTML=pg;
+  var DOW2=['一','二','三','四','五','六','日'];
+  var cw=document.getElementById('calWrap');
+  var ch='<div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:10px">'+label+'</div>';
+  ch+='<div class="cal-hdr">'+DOW2.map(function(d){return '<div class="cal-dow">'+d+'</div>';}).join('')+'</div>';
+  ch+='<div class="cal-grid" id="calGrid"></div>';
+  cw.innerHTML=ch;
+  var grid2=document.getElementById('calGrid');
+  for(var ei=0;ei<startDow;ei++){var emp=document.createElement('div');emp.className='cal-cell empty';grid2.appendChild(emp);}
+  monthDays.forEach(function(d){
+    var dd=dataMap[d]; var effData=dd||(d<CUTOFF?monthData:null);
+    var isMonthly=!dd&&!!monthData&&d<CUTOFF;
+    var cnt=effData?(effData.items||[]).length:0;
+    var s2=(effData&&effData.summary&&effData.summary.sentiment_distribution)||{};
+    var cell2=document.createElement('div');
+    cell2.className='cal-cell'+(d===today?' today':'')+(!cnt?' no-data':'')+(isMonthly?' monthly-data':'');
+    var inn='<div class="cal-day-num">'+parseInt(d.slice(8))+'</div>';
+    if(cnt){inn+='<div class="cal-count">'+(isMonthly?'月':cnt)+'</div><div class="cal-dots">';
+      if((s2['正面']||0)>0)inn+='<span class="cal-dot pos"></span>';
+      if((s2['中性']||0)>0)inn+='<span class="cal-dot neu"></span>';
+      if((s2['负面']||0)>0)inn+='<span class="cal-dot neg"></span>';
+      inn+='</div>';}
+    cell2.innerHTML=inn;
+    if(effData)(function(ds){cell2.onclick=function(){selectDay(ds);};})(d);
+    grid2.appendChild(cell2);
+  });
+  renderNegBannerAgg(agg); renderStats(agg.summ,agg.items,label);
+  renderSentChart(agg.summ); renderMonthTrendChart(monthDays,dataMap);
+  renderSummaryDesc(autoMonthlySummary(agg,label),'📋 本月舆情总结','sumDesc');
+  renderFilters(); renderItems(agg.items);
+}
+
+function aggregateDays(days){
+  var seen={}; var items=[]; var pos=0,neu=0,neg=0; var byP={};
+  days.forEach(function(d){
+    var entry=findEntry(d);
+    if(!entry||seen[entry.date])return;
+    seen[entry.date]=1;
+    (entry.data.items||[]).forEach(function(it){ items.push(Object.assign({},it,{_date:it.publish_date||d})); });
+    var s=(entry.data.summary&&entry.data.summary.sentiment_distribution)||{};
+    pos+=s['正面']||0; neu+=s['中性']||0; neg+=s['负面']||0;
+    Object.keys((entry.data.summary&&entry.data.summary.by_platform)||{}).forEach(function(k){byP[k]=(byP[k]||0)+(entry.data.summary.by_platform[k]||0);});
+  });
+  items.sort(function(a,b){var o={'负面':0,'中性':1,'正面':2};return(o[a.sentiment]||3)-(o[b.sentiment]||3);});
+  return {items:items,summ:{total:items.length,sentiment_distribution:{'正面':pos,'中性':neu,'负面':neg},by_platform:byP}};
+}
+
+function renderNegBanner(items){
+  var negs=items.filter(function(i){return i.sentiment==='负面';}); var el=document.getElementById('negBanner'); if(!el||!negs.length)return;
+  el.classList.add('show');
+  var html='<div class="neg-banner-title">⚠️ 负面舆情预警（'+negs.length+'条）</div><ul class="neg-banner-list">';
+  negs.slice(0,5).forEach(function(i){html+='<li>▸ <a href="'+(i.url||'#')+'" target="_blank">'+i.title+'</a> <span style="color:#9ca3af">— '+(i.platform_tag||i.platform||'')+'</span></li>';});
+  el.innerHTML=html+'</ul>';
+}
+function renderNegBannerAgg(agg){ renderNegBanner(agg.items); }
+function renderStats(summ,items,label){
+  var cnt=Array.isArray(items)?items.length:(summ&&summ.total||0);
+  var s=(summ&&summ.sentiment_distribution)||{}; var el=document.getElementById('statsRow'); if(!el)return;
+  el.innerHTML='<div class="stat-c"><div class="stat-lbl">总曝光量</div><div class="stat-val c-blue">'+cnt+'</div><div class="stat-sub">'+(label||'')+'</div></div>'+
+    '<div class="stat-c"><div class="stat-lbl">✅ 正面</div><div class="stat-val c-green">'+(s['正面']||0)+'</div><div class="stat-sub">积极报道</div></div>'+
+    '<div class="stat-c"><div class="stat-lbl">⬜ 中性</div><div class="stat-val c-gray">'+(s['中性']||0)+'</div><div class="stat-sub">客观报道</div></div>'+
+    '<div class="stat-c"><div class="stat-lbl">❌ 负面</div><div class="stat-val c-red">'+(s['负面']||0)+'</div><div class="stat-sub">需关注</div></div>'+
+    '<div class="stat-c"><div class="stat-lbl">📊 来源</div><div class="stat-val c-amber">'+Object.keys((summ&&summ.by_platform)||{}).length+'</div><div class="stat-sub">个平台</div></div>';
+}
+function renderSentChart(summ){
+  var s=(summ&&summ.sentiment_distribution)||{}; var ctx=document.getElementById('cSent'); if(!ctx)return; destroyChart('cSent');
+  charts['cSent']=new Chart(ctx,{type:'doughnut',data:{labels:['正面','中性','负面'],datasets:[{data:[s['正面']||0,s['中性']||0,s['负面']||0],backgroundColor:['#16a34a','#9ca3af','#dc2626'],borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{size:11},padding:8}}}}});
+}
+function renderPlatChart(summ){
+  var bp=(summ&&summ.by_platform)||{}; var ctx=document.getElementById('cPlat'); if(!ctx)return; destroyChart('cPlat');
+  var labels=Object.keys(bp).slice(0,10);
+  charts['cPlat']=new Chart(ctx,{type:'bar',data:{labels:labels,datasets:[{data:labels.map(function(k){return bp[k];}),backgroundColor:labels.map(function(l){return platColor(l);}),borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:9},maxRotation:35}},y:{beginAtZero:true,ticks:{stepSize:1}}}}});
+}
+function renderWeekTrendChart(days){
+  var ctx=document.getElementById('cTrend'); if(!ctx)return; destroyChart('cTrend');
+  var labels=days.map(function(d){return d.slice(5);});
+  var posD=days.map(function(d){var e=findEntry(d);return e&&e.data.summary&&e.data.summary.sentiment_distribution?(e.data.summary.sentiment_distribution['正面']||0):0;});
+  var neuD=days.map(function(d){var e=findEntry(d);return e&&e.data.summary&&e.data.summary.sentiment_distribution?(e.data.summary.sentiment_distribution['中性']||0):0;});
+  var negD=days.map(function(d){var e=findEntry(d);return e&&e.data.summary&&e.data.summary.sentiment_distribution?(e.data.summary.sentiment_distribution['负面']||0):0;});
+  charts['cTrend']=new Chart(ctx,{type:'bar',data:{labels:labels,datasets:[{label:'正面',data:posD,backgroundColor:'#16a34a',borderRadius:3},{label:'中性',data:neuD,backgroundColor:'#9ca3af',borderRadius:3},{label:'负面',data:negD,backgroundColor:'#dc2626',borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{font:{size:10}}}},scales:{x:{stacked:true,ticks:{font:{size:9}}},y:{stacked:true,beginAtZero:true}}}});
+}
+function renderMonthTrendChart(days,dataMap){
+  var ctx=document.getElementById('cTrend'); if(!ctx)return; destroyChart('cTrend');
+  var labels=days.map(function(d){return parseInt(d.slice(8))+'日';});
+  var totals=days.map(function(d){return dataMap[d]?(dataMap[d].items||[]).length:0;});
+  charts['cTrend']=new Chart(ctx,{type:'line',data:{labels:labels,datasets:[{label:'条数',data:totals,borderColor:'#3b82f6',backgroundColor:'rgba(59,130,246,.1)',tension:.3,fill:true,pointRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:8},maxTicksLimit:15,maxRotation:0}},y:{beginAtZero:true}}}});
+}
+function renderSummaryDesc(text,title,targetId){
+  var el=document.getElementById(targetId); if(!el||!text)return;
+  el.innerHTML='<div class="summary-c"><div class="summary-ttl">'+title+'</div><div class="summary-body">'+text+'</div></div>';
+}
+function renderFilters(){
+  var el=document.getElementById('filterBar'); if(!el)return;
+  var src=['all','官方','央媒','科技媒体','财经媒体','社交','自媒体','国际媒体','媒体'];
+  var sent=['all','正面','中性','负面'];
+  var sentLabel={'all':'全部','正面':'✅ 正面','中性':'⬜ 中性','负面':'❌ 负面'};
+  var html='<span class="f-lbl">来源：</span><div class="f-group">';
+  src.forEach(function(t){html+='<button class="f-btn'+(typeFilter===t?' on':'')+'" onclick="setTF(\''+t+'\')">'+(t==='all'?'全部':t)+'</button>';});
+  html+='</div><div class="f-sep"></div><span class="f-lbl">情感：</span><div class="f-group">';
+  sent.forEach(function(s){html+='<button class="f-btn'+(sentFilter===s?' on':'')+'" onclick="setSF(\''+s+'\')">'+(sentLabel[s]||s)+'</button>';});
+  html+='</div>';
+  el.innerHTML=html;
+}
+function renderItems(allItems){
+  var filtered=allItems.filter(function(it){return(typeFilter==='all'||it.media_type===typeFilter)&&(sentFilter==='all'||it.sentiment===sentFilter);});
+  var cnt=document.getElementById('listCnt'); if(cnt)cnt.textContent='共 '+filtered.length+' 条';
+  var wrap=document.getElementById('itemsWrap'); if(!wrap)return;
+  if(!filtered.length){wrap.innerHTML='<div class="empty">暂无符合条件的内容</div>';return;}
+  var sentCls={'正面':'pos','中性':'neu','负面':'neg'};
+  var sentBadge={'正面':'b-sent-pos','中性':'b-sent-neu','负面':'b-sent-neg'};
+  var html='<div class="items">';
+  filtered.forEach(function(it){
+    var cls=sentCls[it.sentiment]||'neu', sb=sentBadge[it.sentiment]||'b-sent-neu';
+    var ptag=it.platform_tag||it.platform||'媒体', pcolor=platColor(ptag);
+    var hasUrl=it.url&&it.url!=='#';
+    var topics=(it.key_topics||[]).map(function(t){return '<span class="topic">'+t+'</span>';}).join('');
+    html+='<div class="item '+cls+'"><div class="item-top">';
+    html+=hasUrl?'<a class="item-title" href="'+it.url+'" target="_blank" rel="noopener">'+(it.title||'无标题')+'</a>':'<span class="item-title no-link">'+(it.title||'无标题')+'</span>';
+    html+='<div class="badges"><span class="badge b-platform" style="background:'+pcolor+'">'+ptag+'</span><span class="badge '+sb+'">'+(it.sentiment||'中性')+'</span><span class="badge b-type">'+(it.content_type||'报道')+'</span></div>';
+    html+='</div><div class="item-meta">📅 '+(it.publish_date||'—')+' &nbsp;·&nbsp; ✍️ '+(it.author||it.source||'—')+' &nbsp;·&nbsp; 🏷 '+(it.media_type||it.platform||'媒体')+'</div>';
+    html+='<div class="item-summary">'+(it.summary||'暂无摘要')+'</div>';
+    if(topics) html+='<div class="item-topics">'+topics+'</div>';
+    if(hasUrl) html+='<div class="item-link-row"><a class="item-link" href="'+it.url+'" target="_blank" rel="noopener">🔗 查看原文</a></div>';
+    html+='</div>';
+  });
+  wrap.innerHTML=html+'</div>';
+}
+function setTF(v){typeFilter=v;renderFilters();renderCurrentItems();}
+function setSF(v){sentFilter=v;renderFilters();renderCurrentItems();}
+function renderCurrentItems(){
+  if(period==='day'){var entry=findEntry(cursor);var its=(entry?entry.data.items||[]:[]).slice().sort(function(a,b){var o={'负面':0,'中性':1,'正面':2};return(o[a.sentiment]||3)-(o[b.sentiment]||3);});renderItems(its);}
+  else{var base=new Date(cursor+'T00:00:00');var y=base.getFullYear(),m=base.getMonth();var days=period==='week'?function(){var ws2=weekStart(cursor);var d2=[];for(var i2=0;i2<7;i2++)d2.push(offsetDate(ws2,i2));return d2;}():function(){var nd=new Date(y,m+1,0).getDate();var d3=[];for(var i3=1;i3<=nd;i3++)d3.push(fmtDate(new Date(y,m,i3)));return d3;}();renderItems(aggregateDays(days).items);}
+}
+function autoWeeklySummary(agg,days){
+  var cnt=agg.items.length; if(!cnt)return '本周暂无监测数据。';
+  var s=agg.summ.sentiment_distribution||{};
+  return '本周（'+days[0]+' 至 '+days[6]+'）共监测到 '+cnt+' 条舆情。正面 '+(s['正面']||0)+' 条、中性 '+(s['中性']||0)+' 条、负面 '+(s['负面']||0)+' 条。'+((s['负面']||0)>0?'⚠️ 本周存在负面舆情，建议重点关注。':'本周整体态势良好。');
+}
+function autoMonthlySummary(agg,label){
+  var cnt=agg.items.length; if(!cnt)return label+'暂无监测数据。';
+  var s=agg.summ.sentiment_distribution||{}; var t=(s['正面']||0)+(s['中性']||0)+(s['负面']||0);
+  var pr=t?Math.round((s['正面']||0)/t*100):0;
+  return label+'共监测到 '+cnt+' 条舆情。正面 '+(s['正面']||0)+'（'+pr+'%）、中性 '+(s['中性']||0)+'、负面 '+(s['负面']||0)+'。'+((s['负面']||0)>0?'本月出现 '+(s['负面']||0)+' 条负面，建议逐一复查跟进。':'本月整体健康，正面比例较高。');
+}
+function destroyChart(id){if(charts[id]){try{charts[id].destroy();}catch(e){}delete charts[id];}}
+function destroyCharts(){Object.keys(charts).forEach(function(k){destroyChart(k);});charts={};}
+
+window.addEventListener('DOMContentLoaded', function() {
+  var ta = document.getElementById('urlTextarea');
+  if (ta) ta.addEventListener('input', onUrlInput);
+});
+
+init();
+</script>
+</body>
+</html>
